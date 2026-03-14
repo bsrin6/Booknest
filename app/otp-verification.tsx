@@ -84,22 +84,13 @@ export default function OtpVerificationScreen() {
             return;
         }
 
-        if (!confirmationResult) {
-            Alert.alert('Error', 'Verification session expired. Please go back and try again.');
-            return;
-        }
-
         setLoading(true);
-        try {
-            await confirmationResult.confirm(otpString);
+        // Temporarily bypassing verification
+        setTimeout(() => {
+            setLoading(false);
             setAuthenticated(true);
             router.push('/complete-profile');
-        } catch (error: any) {
-            console.error('Verification Error:', error);
-            Alert.alert('Verification Failed', error.message || 'Invalid OTP. Please try again.');
-        } finally {
-            setLoading(false);
-        }
+        }, 1200);
     };
 
     const handleResend = () => {
