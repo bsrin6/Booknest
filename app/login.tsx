@@ -1,7 +1,9 @@
+import { auth } from '@/constants/firebaseConfig';
 import { useAuthStore } from '@/store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     KeyboardAvoidingView,
@@ -14,6 +16,12 @@ import {
     View,
 } from 'react-native';
 
+declare global {
+    interface Window {
+        recaptchaVerifier: RecaptchaVerifier;
+    }
+}
+
 const COUNTRY_CODES = [
     { code: '+91', label: '🇮🇳 +91' },
     { code: '+1', label: '🇺🇸 +1' },
@@ -24,17 +32,47 @@ const COUNTRY_CODES = [
 
 export default function LoginScreen() {
     const router = useRouter();
-    const { phoneNumber, countryCode, setPhoneNumber, setCountryCode } =
+    const { phoneNumber, countryCode, setPhoneNumber, setCountryCode, setConfirmationResult, setLoading, isLoading } =
         useAuthStore();
     const [showCountryCodes, setShowCountryCodes] = useState(false);
 
-    const handleSendOtp = () => {
+    useEffect(() => {
+        if (Platform.OS === 'web' && !window.recaptchaVerifier) {
+            window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+                'size': 'invisible',
+                'callback': () => {
+                    // reCAPTCHA solved, allow signInWithPhoneNumber.
+                }
+            });
+        }
+    }, []);
+
+    const handleSendOtp = async () => {
         if (phoneNumber.length < 10) {
             Alert.alert('Invalid Number', 'Please enter a valid phone number');
             return;
         }
-        // In production, send OTP via backend
-        router.push('/otp-verification');
+
+        const fullPhone = `${countryCode}${phoneNumber}`;
+        setLoading(true);
+
+        try {
+            if (Platform.OS === 'web') {
+                const appVerifier = window.recaptchaVerifier;
+                const confirmationResult = await signInWithPhoneNumber(auth, fullPhone, appVerifier);
+                setConfirmationResult(confirmationResult);
+                router.push('/otp-verification');
+            } else {
+                // For native platforms, you would typically use @react-native-firebase/auth
+                // but since the user is focused on Vercel/Web, we'll keep this simple for now.
+                Alert.alert('Info', 'Phone auth on native requires additional setup. Works on Web!');
+            }
+        } catch (error: any) {
+            console.error('Phone Auth Error:', error);
+            Alert.alert('Error', error.message || 'Failed to send OTP');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const selectedCountry =
@@ -137,13 +175,19 @@ export default function LoginScreen() {
                 <TouchableOpacity
                     style={[
                         styles.sendOtpBtn,
-                        phoneNumber.length < 10 && styles.sendOtpBtnDisabled,
+                        (phoneNumber.length < 10 || isLoading) && styles.sendOtpBtnDisabled,
                     ]}
                     onPress={handleSendOtp}
                     activeOpacity={0.85}
+                    disabled={isLoading}
                 >
-                    <Text style={styles.sendOtpText}>Send OTP</Text>
+                    <Text style={styles.sendOtpText}>
+                        {isLoading ? 'Sending...' : 'Send OTP'}
+                    </Text>
                 </TouchableOpacity>
+
+                {/* Recaptcha Container for Web */}
+                {Platform.OS === 'web' && <div id="recaptcha-container" />}
 
                 {/* Footer */}
                 <View style={styles.footer}>

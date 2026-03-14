@@ -22,7 +22,7 @@ const isSmallScreen = SCREEN_WIDTH < 380;
 
 export default function OtpVerificationScreen() {
     const router = useRouter();
-    const { otp, setOtp, phoneNumber, countryCode, setAuthenticated } =
+    const { otp, setOtp, phoneNumber, countryCode, setAuthenticated, confirmationResult, setLoading, isLoading } =
         useAuthStore();
     const [timer, setTimer] = useState(30);
     const [canResend, setCanResend] = useState(false);
@@ -77,15 +77,29 @@ export default function OtpVerificationScreen() {
         }
     };
 
-    const handleVerify = () => {
+    const handleVerify = async () => {
         const otpString = otp.join('');
         if (otpString.length < 6) {
             Alert.alert('Incomplete', 'Please enter the full 6-digit OTP');
             return;
         }
-        // In production, verify OTP with backend
-        setAuthenticated(true);
-        router.push('/complete-profile');
+
+        if (!confirmationResult) {
+            Alert.alert('Error', 'Verification session expired. Please go back and try again.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await confirmationResult.confirm(otpString);
+            setAuthenticated(true);
+            router.push('/complete-profile');
+        } catch (error: any) {
+            console.error('Verification Error:', error);
+            Alert.alert('Verification Failed', error.message || 'Invalid OTP. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleResend = () => {
@@ -166,11 +180,14 @@ export default function OtpVerificationScreen() {
 
                     {/* Verify Button */}
                     <TouchableOpacity
-                        style={[styles.verifyBtn, !isComplete && styles.verifyBtnDisabled]}
+                        style={[styles.verifyBtn, (!isComplete || isLoading) && styles.verifyBtnDisabled]}
                         onPress={handleVerify}
                         activeOpacity={0.85}
+                        disabled={isLoading}
                     >
-                        <Text style={styles.verifyBtnText}>Verify</Text>
+                        <Text style={styles.verifyBtnText}>
+                            {isLoading ? 'Verifying...' : 'Verify'}
+                        </Text>
                     </TouchableOpacity>
 
                     {/* Timer & Resend */}

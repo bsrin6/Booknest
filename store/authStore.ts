@@ -10,6 +10,7 @@ interface AuthState {
     isLoading: boolean;
     isAuthenticated: boolean;
     isProfileComplete: boolean;
+    confirmationResult: any | null;
 
     // Actions
     setPhoneNumber: (phone: string) => void;
@@ -21,6 +22,7 @@ interface AuthState {
     setLoading: (loading: boolean) => void;
     setAuthenticated: (auth: boolean) => void;
     setProfileComplete: (complete: boolean) => void;
+    setConfirmationResult: (result: any | null) => void;
     resetAuth: () => void;
 }
 
@@ -34,6 +36,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     isLoading: false,
     isAuthenticated: false,
     isProfileComplete: false,
+    confirmationResult: null,
 
     setPhoneNumber: (phone) => set({ phoneNumber: phone }),
     setCountryCode: (code) => set({ countryCode: code }),
@@ -44,6 +47,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     setLoading: (loading) => set({ isLoading: loading }),
     setAuthenticated: (auth) => set({ isAuthenticated: auth }),
     setProfileComplete: (complete) => set({ isProfileComplete: complete }),
+    setConfirmationResult: (result) => set({ confirmationResult: result }),
     resetAuth: () =>
         set({
             phoneNumber: '',
@@ -54,5 +58,6 @@ export const useAuthStore = create<AuthState>((set) => ({
             isLoading: false,
             isAuthenticated: false,
             isProfileComplete: false,
+            confirmationResult: null,
         }),
 }));
